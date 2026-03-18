@@ -33,9 +33,9 @@ const INDIAN_STATES = [
 
 const ENTITIES = ["WIBRO", "GTEL", "GISPL"]
 const AMOUNT_TYPES = [
-  { value: 'receivedDetails', label: 'Received', fullLabel: 'Received Details', color: 'emerald', bg: 'bg-emerald-500' },
-  { value: 'tdsProvision', label: 'TDS Provision', fullLabel: 'TDS Provision', color: 'amber', bg: 'bg-amber-500' },
-  { value: 'tdsConfirm', label: 'TDS Confirm', fullLabel: 'TDS Confirm', color: 'violet', bg: 'bg-violet-500' },
+  { value: 'receivedDetails', label: 'Bso payment', fullLabel: 'Received Details', color: 'emerald', bg: 'bg-emerald-500' },
+  // { value: 'tdsProvision', label: 'TDS Provision', fullLabel: 'TDS Provision', color: 'amber', bg: 'bg-amber-500' },
+  // { value: 'tdsConfirm', label: 'TDS Confirm', fullLabel: 'TDS Confirm', color: 'violet', bg: 'bg-violet-500' },
 ]
 
 const PAYMENT_METHODS = [
@@ -1336,7 +1336,7 @@ export default function BulkUpdate() {
         {paymentData ? (
           <>
             <div className="flex items-center gap-2">
-              <button onClick={handleBack} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors"><ArrowLeft className="w-4 h-4" /><span>Bulk Payment Update</span></button>
+              <button onClick={handleBack} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors"><ArrowLeft className="w-4 h-4" /><span>Bso Bulk Payment Update</span></button>
               <ChevronRight className="w-4 h-4 text-slate-300" />
               <span className="text-sm font-bold text-slate-800">Distribute Payment</span>
             </div>
@@ -1346,7 +1346,7 @@ export default function BulkUpdate() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bulk Payment Update</h1>
+                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Bso Bulk Payment Update</h1>
                 <p className="text-sm text-slate-400 mt-0.5">Record and distribute payments across multiple orders</p>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-500 font-medium">

@@ -4,12 +4,12 @@ import { Search, Download, X, Eye, EyeOff, Info, ArrowLeft, FileText, FileSpread
 import { useRouter } from 'next/navigation'
 
 const INDIAN_STATES = [
-  "Delhi","Maharashtra","Karnataka","Tamil Nadu","Uttar Pradesh",
-  "Haryana","Punjab","Gujarat","West Bengal","Rajasthan","Other"
+  "Delhi", "Maharashtra", "Karnataka", "Tamil Nadu", "Uttar Pradesh",
+  "Haryana", "Punjab", "Gujarat", "West Bengal", "Rajasthan", "Other"
 ]
-const ENTITIES    = ["WIBRO","GTEL","GISPL"]
-const ALL_MONTHS  = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+const ENTITIES = ["WIBRO", "GTEL", "GISPL"]
+const ALL_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 // ─── Date helpers ─────────────────────────────────────────────
 const parseAnyDate = (s) => {
@@ -26,46 +26,46 @@ const parseAnyDate = (s) => {
   return new Date(yyyy, mm - 1, dd)
 }
 
-const getCurrentYear  = () => new Date().getFullYear()
+const getCurrentYear = () => new Date().getFullYear()
 const getCurrentMonth = () => new Date().getMonth()
-const getDaysInMonth  = (m, y) => new Date(y, m + 1, 0).getDate()
+const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate()
 const getLastDayOfMonth = (m, y) => {
   const d = getDaysInMonth(m, y)
-  return `${String(d).padStart(2,'0')}-${String(m+1).padStart(2,'0')}-${y}`
+  return `${String(d).padStart(2, '0')}-${String(m + 1).padStart(2, '0')}-${y}`
 }
 const todayDDMMYYYY = () => {
   const n = new Date()
-  return `${String(n.getDate()).padStart(2,'0')}-${String(n.getMonth()+1).padStart(2,'0')}-${n.getFullYear()}`
+  return `${String(n.getDate()).padStart(2, '0')}-${String(n.getMonth() + 1).padStart(2, '0')}-${n.getFullYear()}`
 }
-const toInputFmt  = (s) => { if (!s) return ''; const [d,m,y] = s.split('-'); return `${y}-${m}-${d}` }
-const toStorageFmt = (s) => { if (!s) return ''; const [y,m,d] = s.split('-'); return `${d}-${m}-${y}` }
+const toInputFmt = (s) => { if (!s) return ''; const [d, m, y] = s.split('-'); return `${y}-${m}-${d}` }
+const toStorageFmt = (s) => { if (!s) return ''; const [y, m, d] = s.split('-'); return `${d}-${m}-${y}` }
 const fmtMonthYear = (m, y) => `${MONTH_NAMES[m]} ${y}`
 
 const getDefaultDateRange = () => {
-  const y = getCurrentYear(), m = getCurrentMonth()+1, d = new Date().getDate()
-  return { from: `${y}-01-01`, to: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` }
+  const y = getCurrentYear(), m = getCurrentMonth() + 1, d = new Date().getDate()
+  return { from: `${y}-01-01`, to: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` }
 }
-const getYearOptions     = () => ["All", ...Array.from({length:6}, (_,i) => getCurrentYear()-i)]
-const getAvailMonths     = (y) => y === getCurrentYear() ? ALL_MONTHS.slice(0, getCurrentMonth()+1) : ALL_MONTHS
+const getYearOptions = () => ["All", ...Array.from({ length: 6 }, (_, i) => getCurrentYear() - i)]
+const getAvailMonths = (y) => y === getCurrentYear() ? ALL_MONTHS.slice(0, getCurrentMonth() + 1) : ALL_MONTHS
 
 // ─── Amount helpers ───────────────────────────────────────────
-const sumField = (arr, field) => (!arr?.length) ? 0 : arr.reduce((s,i) => s+(Number(i[field])||0), 0)
-const sumAmount       = (arr) => sumField(arr, 'amount')
-const sumTotalWithGst = (arr) => arr?.length ? arr.reduce((s,i) => s+(Number(i.totalWithGst)||Number(i.amount)||0), 0) : 0
+const sumField = (arr, field) => (!arr?.length) ? 0 : arr.reduce((s, i) => s + (Number(i[field]) || 0), 0)
+const sumAmount = (arr) => sumField(arr, 'amount')
+const sumTotalWithGst = (arr) => arr?.length ? arr.reduce((s, i) => s + (Number(i.totalWithGst) || Number(i.amount) || 0), 0) : 0
 
-const fmt = (n) => (n||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})
+const fmt = (n) => (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // ─── Split billing detection ──────────────────────────────────
 const isSplit = (order) => {
-  const s1 = order.billing1?.state||'', s2 = order.billing2?.state||''
+  const s1 = order.billing1?.state || '', s2 = order.billing2?.state || ''
   return order.product === 'NLD' && s1 !== s2 && s2 !== ''
 }
 
 // ─── Credit-pool balance algorithm ────
 const creditPoolBalance = (months) => {
   if (!months?.length) return 0
-  const sorted = [...months].sort((a,b)=>new Date(a.year,a.month)-new Date(b.year,b.month))
-  const pool0  = sorted.reduce((s,m) => s + m.received + m.creditNotes + m.tdsConfirm, 0)
+  const sorted = [...months].sort((a, b) => new Date(a.year, a.month) - new Date(b.year, b.month))
+  const pool0 = sorted.reduce((s, m) => s + m.received + m.creditNotes + m.tdsConfirm, 0)
   let pool = pool0, running = 0
   sorted.forEach(m => {
     const charges = m.totalWithGst + m.miscSell
@@ -76,20 +76,239 @@ const creditPoolBalance = (months) => {
   return running
 }
 
-// ─── Text truncation with popup ────────────────────────────────
+// ─── AMOUNT STATUS helpers ────────────────────────────────────
+const parseMonthYear = (s) => {
+  if (!s) return null
+  const parts = s.trim().split(' ')
+  if (parts.length !== 2) return null
+  return new Date(`${parts[0]} 1, ${parts[1]}`)
+}
+
+const fetchAmountStatus = async (orderId, state, toDateStr) => {
+  try {
+    const r = await fetch(`/api/billing/distributed?orderId=${orderId}`)
+    const j = await r.json()
+    if (!j.success || !j.data?.length) return []
+
+    const toDate = toDateStr ? parseAnyDate(toDateStr) : null
+
+    const sorted = [...j.data].sort((a, b) => {
+      const da = parseAnyDate(a.paymentDate) || new Date(0)
+      const db = parseAnyDate(b.paymentDate) || new Date(0)
+      if (da - db !== 0) return da - db
+      const ca = a.createdAt ? new Date(a.createdAt) : new Date(0)
+      const cb = b.createdAt ? new Date(b.createdAt) : new Date(0)
+      return ca - cb
+    })
+
+    const statusMap = {}
+    sorted.forEach(payment => {
+      payment.entries?.forEach(entry => {
+        if (entry.orderId === orderId && (!state || entry.state === state)) {
+          entry.monthlyAdjustments?.forEach(adj => {
+            if (toDate) {
+              const adjDate = parseMonthYear(adj.month)
+              if (adjDate && adjDate > toDate) return
+            }
+            statusMap[adj.month] = {
+              month: adj.month,
+              amountStatus: adj.amountStatus,
+              invoiceNumber: adj.invoiceNumber
+            }
+          })
+        }
+      })
+    })
+
+    const months = Object.values(statusMap).sort((a, b) => {
+      const da = parseMonthYear(a.month) || new Date(0)
+      const db = parseMonthYear(b.month) || new Date(0)
+      return da - db
+    })
+
+    const n = months.length
+    const fullyPaidAfter = new Array(n).fill(false)
+    for (let i = n - 2; i >= 0; i--) {
+      if (months[i + 1].amountStatus === 'Fully Paid' || fullyPaidAfter[i + 1]) {
+        fullyPaidAfter[i] = true
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      if ((months[i].amountStatus === 'Partially Paid' || months[i].amountStatus === 'Not Paid') && fullyPaidAfter[i]) {
+        months[i] = { ...months[i], amountStatus: 'Fully Paid' }
+      }
+    }
+
+    return months
+  } catch (e) {
+    console.error('[fetchAmountStatus] error:', e)
+    return []
+  }
+}
+
+const statusStyle = (status) => {
+  switch (status) {
+    case 'Fully Paid':
+      return { bg: 'bg-emerald-100 text-emerald-800 border border-emerald-200', dot: 'bg-emerald-500' }
+    case 'Partially Paid':
+      return { bg: 'bg-amber-100 text-amber-800 border border-amber-200', dot: 'bg-amber-500' }
+    case 'Not Paid':
+    default:
+      return { bg: 'bg-rose-100 text-rose-800 border border-rose-200', dot: 'bg-rose-500' }
+  }
+}
+
+// ─── Amount Status History Popup ─────────────────────────────
+const AmountStatusHistoryPopup = React.memo(({ allStatuses, orderId, state, onClose }) => {
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 z-[10005] flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] overflow-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-5 py-4 flex items-center justify-between sticky top-0 rounded-t-2xl">
+          <div>
+            <h3 className="text-base font-bold text-white">Payment History</h3>
+            <p className="text-slate-300 text-xs mt-0.5">Order: {orderId} · {state}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          {allStatuses.length === 0 ? (
+            <p className="text-center text-slate-400 text-sm py-6">No payment records found</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {allStatuses.map((item, i) => {
+                const s = statusStyle(item.amountStatus)
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-100"
+                  >
+                    <span className="text-sm font-semibold text-slate-700">{item.month}</span>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${s.bg}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                      {item.amountStatus}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+})
+AmountStatusHistoryPopup.displayName = 'AmountStatusHistoryPopup'
+
+const AmountStatusCell = React.memo(({ orderId, state, toDateStr, selectedMonthLabel }) => {
+  const [allStatuses, setAllStatuses] = useState(null)
+  const [showPopup, setShowPopup] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setAllStatuses(null)
+
+    fetchAmountStatus(orderId, state, null).then(full => {
+      if (!cancelled) setAllStatuses(full)
+    })
+
+    return () => { cancelled = true }
+  }, [orderId, state])
+
+  if (allStatuses === null) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <div className="animate-spin h-3.5 w-3.5 rounded-full border-b-2 border-blue-400" />
+      </div>
+    )
+  }
+
+  const toDate = toDateStr ? parseAnyDate(toDateStr) : null
+  const filteredStatuses = toDate
+    ? allStatuses.filter(item => {
+        const d = parseMonthYear(item.month)
+        return !d || d <= toDate
+      })
+    : allStatuses
+
+  let inlineItem = null
+  if (selectedMonthLabel) {
+    inlineItem = filteredStatuses.find(s => s.month === selectedMonthLabel) || {
+      month: selectedMonthLabel,
+      amountStatus: 'Not Paid'
+    }
+  } else {
+    inlineItem = filteredStatuses.length > 0
+      ? filteredStatuses[filteredStatuses.length - 1]
+      : { month: '-', amountStatus: 'Not Paid' }
+  }
+
+  const s = statusStyle(inlineItem.amountStatus)
+  const hasHistory = (allStatuses?.length || 0) > 0
+
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${s.bg}`}>
+            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />
+            {inlineItem.amountStatus}
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium pl-1">{inlineItem.month}</span>
+        </div>
+
+        {hasHistory && (
+          <button
+            onClick={() => setShowPopup(true)}
+            title="View full payment history"
+            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 hover:bg-blue-100 text-slate-400 hover:text-blue-600 transition-colors"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {showPopup && (
+        <AmountStatusHistoryPopup
+          allStatuses={allStatuses || []}
+          orderId={orderId}
+          state={state}
+          onClose={() => setShowPopup(false)}
+        />
+      )}
+    </>
+  )
+})
+AmountStatusCell.displayName = 'AmountStatusCell'
+
+// ─── Text truncation with popup ─────────────────────────────────
 const TextPopup = React.memo(({ text, onClose }) => {
-  useEffect(()=>{ 
-    const h=e=>{if(e.key==='Escape')onClose()}
-    document.addEventListener('keydown',h)
-    return ()=>document.removeEventListener('keydown',h) 
-  },[onClose])
-  
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
+  }, [onClose])
+
   return (
     <div className="fixed inset-0 bg-black/50 z-[10000] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[70vh] overflow-auto" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[70vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
           <p className="font-semibold text-slate-800">Full Text</p>
-          <button onClick={onClose}><X className="w-5 h-5 text-slate-400"/></button>
+          <button onClick={onClose}><X className="w-5 h-5 text-slate-400" /></button>
         </div>
         <p className="px-5 py-4 text-sm text-slate-700 break-words whitespace-pre-wrap">{text}</p>
       </div>
@@ -100,15 +319,15 @@ TextPopup.displayName = 'TextPopup'
 
 const TruncatedText = React.memo(({ text, limit = 18, className = '' }) => {
   const [showPopup, setShowPopup] = useState(false)
-  
+
   if (!text) return <span className={className}>-</span>
   if (text.length <= limit) return <span className={className}>{text}</span>
-  
+
   return (
     <>
       <span className={className}>
         {text.slice(0, limit)}
-        <button 
+        <button
           onClick={() => setShowPopup(true)}
           className="text-blue-600 hover:text-blue-700 hover:underline ml-1 font-medium"
         >
@@ -121,22 +340,22 @@ const TruncatedText = React.memo(({ text, limit = 18, className = '' }) => {
 })
 TruncatedText.displayName = 'TruncatedText'
 
-// ─── NEW: Array Details Popup ─────────────────────────────────
+// ─── Array Details Popup ─────────────────────────────────
 const ArrayDetailsPopup = React.memo(({ data, title, onClose }) => {
-  useEffect(()=>{ 
-    const h=e=>{if(e.key==='Escape')onClose()}
-    document.addEventListener('keydown',h)
-    return ()=>document.removeEventListener('keydown',h) 
-  },[onClose])
+  useEffect(() => {
+    const h = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', h)
+    return () => document.removeEventListener('keydown', h)
+  }, [onClose])
 
   if (!data || data.length === 0) {
     return (
       <div className="fixed inset-0 bg-black/60 z-[10002] flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full" onClick={e=>e.stopPropagation()}>
+        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full" onClick={e => e.stopPropagation()}>
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between rounded-t-xl">
             <h3 className="text-lg font-bold text-white">{title}</h3>
             <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-              <X className="w-5 h-5 text-white"/>
+              <X className="w-5 h-5 text-white" />
             </button>
           </div>
           <div className="p-8 text-center">
@@ -149,14 +368,14 @@ const ArrayDetailsPopup = React.memo(({ data, title, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[10002] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between sticky top-0 z-10 rounded-t-xl">
           <h3 className="text-lg font-bold text-white">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-white"/>
+            <X className="w-5 h-5 text-white" />
           </button>
         </div>
-        
+
         <div className="p-6">
           <table className="w-full">
             <thead>
@@ -167,6 +386,12 @@ const ArrayDetailsPopup = React.memo(({ data, title, onClose }) => {
                 {data[0]?.sgst !== undefined && <th className="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase">SGST</th>}
                 {data[0]?.igst !== undefined && <th className="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase">IGST</th>}
                 {data[0]?.totalWithGst !== undefined && <th className="px-4 py-3 text-right text-xs font-bold text-slate-700 uppercase">Basic + GST</th>}
+                {data[0]?.periodStart !== undefined && (
+                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Period</th>
+                )}
+                {data[0]?.invoiceNumber !== undefined && (
+                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Invoice No.</th>
+                )}
                 <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Notes</th>
               </tr>
             </thead>
@@ -179,6 +404,14 @@ const ArrayDetailsPopup = React.memo(({ data, title, onClose }) => {
                   {data[0]?.sgst !== undefined && <td className="px-4 py-3 text-sm text-slate-700 text-right">₹{fmt(item.sgst || 0)}</td>}
                   {data[0]?.igst !== undefined && <td className="px-4 py-3 text-sm text-slate-700 text-right">₹{fmt(item.igst || 0)}</td>}
                   {data[0]?.totalWithGst !== undefined && <td className="px-4 py-3 text-sm text-indigo-700 font-bold text-right">₹{fmt(item.totalWithGst || 0)}</td>}
+                  {data[0]?.periodStart !== undefined && (
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {item.periodStart && item.periodEnd ? `${item.periodStart} to ${item.periodEnd}` : '-'}
+                    </td>
+                  )}
+                  {data[0]?.invoiceNumber !== undefined && (
+                    <td className="px-4 py-3 text-sm text-slate-700 font-medium">{item.invoiceNumber || '-'}</td>
+                  )}
                   <td className="px-4 py-3 text-sm text-slate-600">{item.notes || '-'}</td>
                 </tr>
               ))}
@@ -191,6 +424,8 @@ const ArrayDetailsPopup = React.memo(({ data, title, onClose }) => {
                 {data[0]?.sgst !== undefined && <td className="px-4 py-3 text-sm text-slate-700 text-right">₹{fmt(sumField(data, 'sgst'))}</td>}
                 {data[0]?.igst !== undefined && <td className="px-4 py-3 text-sm text-slate-700 text-right">₹{fmt(sumField(data, 'igst'))}</td>}
                 {data[0]?.totalWithGst !== undefined && <td className="px-4 py-3 text-sm text-indigo-700 text-right">₹{fmt(sumTotalWithGst(data))}</td>}
+                {data[0]?.periodStart !== undefined && <td className="px-4 py-3"></td>}
+                {data[0]?.invoiceNumber !== undefined && <td className="px-4 py-3"></td>}
                 <td className="px-4 py-3"></td>
               </tr>
             </tfoot>
@@ -211,28 +446,22 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
   const showDetails = (data, title) => {
     setDetailsPopup({ data, title })
   }
-  
+
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-[10001] flex items-center justify-center p-4" onClick={onClose}>
-        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={e=>e.stopPropagation()}>
-          {/* Header */}
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
             <div>
               <h3 className="text-xl font-bold text-white">Month Details</h3>
               <p className="text-blue-100 text-sm mt-0.5">{monthData.monthYear}</p>
             </div>
-            <button 
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-white"/>
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+              <X className="w-5 h-5 text-white" />
             </button>
           </div>
-          
-          {/* Content */}
+
           <div className="p-6 space-y-6">
-            {/* Basic Info */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1">Billing Days</p>
@@ -241,18 +470,17 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
               <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1">Start Date</p>
                 <p className="text-lg font-bold text-slate-900">
-                  {String(monthData.startDay).padStart(2,'0')}-{String(monthData.month+1).padStart(2,'0')}-{monthData.year}
+                  {String(monthData.startDay).padStart(2, '0')}-{String(monthData.month + 1).padStart(2, '0')}-{monthData.year}
                 </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1">End Date</p>
                 <p className="text-lg font-bold text-slate-900">
-                  {String(monthData.endDay).padStart(2,'0')}-{String(monthData.month+1).padStart(2,'0')}-{monthData.year}
+                  {String(monthData.endDay).padStart(2, '0')}-{String(monthData.month + 1).padStart(2, '0')}-{monthData.year}
                 </p>
               </div>
             </div>
-            
-            {/* Billing Details */}
+
             <div>
               <h4 className="text-sm font-bold text-slate-700 uppercase mb-3 pb-2 border-b border-slate-200">Billing Amounts</h4>
               <div className="grid grid-cols-2 gap-4">
@@ -287,7 +515,7 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-purple-900">₹{fmt(monthData.miscSell)}</span>
                     {rawData?.miscellaneousSell?.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => showDetails(rawData.miscellaneousSell, 'Miscellaneous Sell Details')}
                         className="text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded font-medium"
                       >
@@ -298,8 +526,7 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                 </div>
               </div>
             </div>
-            
-            {/* Payments */}
+
             <div>
               <h4 className="text-sm font-bold text-slate-700 uppercase mb-3 pb-2 border-b border-slate-200">Payments & Adjustments</h4>
               <div className="grid grid-cols-2 gap-4">
@@ -308,7 +535,7 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-green-900">₹{fmt(monthData.received)}</span>
                     {rawData?.receivedDetails?.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => showDetails(rawData.receivedDetails, 'Payment Received Details')}
                         className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded font-medium"
                       >
@@ -322,7 +549,7 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-cyan-900">₹{fmt(monthData.creditNotes)}</span>
                     {rawData?.creditNotes?.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => showDetails(rawData.creditNotes, 'Credit Notes Details')}
                         className="text-xs px-2 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded font-medium"
                       >
@@ -336,7 +563,7 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-blue-900">₹{fmt(monthData.tdsConfirm)}</span>
                     {rawData?.tdsConfirm?.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => showDetails(rawData.tdsConfirm, 'TDS Confirm Details')}
                         className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
                       >
@@ -350,7 +577,7 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-orange-900">₹{fmt(monthData.tdsProvision)}</span>
                     {rawData?.tdsProvision?.length > 0 && (
-                      <button 
+                      <button
                         onClick={() => showDetails(rawData.tdsProvision, 'TDS Provision Details')}
                         className="text-xs px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded font-medium"
                       >
@@ -361,43 +588,47 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
                 </div>
               </div>
             </div>
-            
-            {/* Balances */}
+
             <div>
               <h4 className="text-sm font-bold text-slate-700 uppercase mb-3 pb-2 border-b border-slate-200">Balance Summary</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex justify-between items-center py-3 px-4 bg-yellow-50 rounded-lg border-2 border-yellow-200">
                   <span className="text-sm font-bold text-yellow-700">Running Balance:</span>
-                  <span className={`text-lg font-extrabold ${monthData.running>=0?'text-green-700':'text-red-700'}`}>
+                  <span className={`text-lg font-extrabold ${monthData.running >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                     ₹{fmt(monthData.running)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-3 px-4 bg-rose-50 rounded-lg border-2 border-rose-200">
                   <span className="text-sm font-bold text-rose-700">Remaining Adjustment:</span>
-                  <span className={`text-lg font-extrabold ${monthData.remAdj>0?'text-red-700':'text-green-700'}`}>
+                  <span className={`text-lg font-extrabold ${monthData.remAdj > 0 ? 'text-red-700' : 'text-green-700'}`}>
                     ₹{fmt(monthData.remAdj)}
                   </span>
                 </div>
               </div>
             </div>
-            
-            {/* Invoice Info */}
-            {monthData.invoiceNumber && monthData.invoiceNumber !== '-' && (
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="text-xs font-bold text-blue-600 uppercase mb-1">Invoice Number</p>
-                <p className="text-base font-bold text-blue-900">{monthData.invoiceNumber}</p>
+
+            {((monthData.invoiceNumber && monthData.invoiceNumber !== '-') ||
+              (monthData.invoiceDate && monthData.invoiceDate !== '-')) && (
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-bold text-blue-600 uppercase mb-1">Invoice Number</p>
+                  <p className="text-base font-bold text-blue-900">{monthData.invoiceNumber || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-blue-600 uppercase mb-1">Invoice Date</p>
+                  <p className="text-base font-bold text-blue-900">{monthData.invoiceDate || '-'}</p>
+                </div>
               </div>
             )}
           </div>
         </div>
       </div>
-      
-      {/* Details Popup */}
+
       {detailsPopup && (
-        <ArrayDetailsPopup 
-          data={detailsPopup.data} 
-          title={detailsPopup.title} 
-          onClose={() => setDetailsPopup(null)} 
+        <ArrayDetailsPopup
+          data={detailsPopup.data}
+          title={detailsPopup.title}
+          onClose={() => setDetailsPopup(null)}
         />
       )}
     </>
@@ -408,42 +639,36 @@ const MonthDetailView = ({ monthData, rawData, onClose }) => {
 const loadOrderBreakdown = async (order, toDateStr, splitState) => {
   const pcdDate = parseAnyDate(order.pcdDate)
   const termDate = order.terminateDate ? parseAnyDate(order.terminateDate) : null
-  const toDate  = parseAnyDate(toDateStr)
+  const toDate = parseAnyDate(toDateStr)
 
   const breakdownBase = {
     months: [], totalBalance: 0,
     orderDetails: {
-      orderId: order.orderId, 
-      lsiId: order.lsiId, 
+      orderId: order.orderId,
+      lsiId: order.lsiId,
       state: splitState,
       splitFactor: isSplit(order) ? 2 : 1,
-      pcdDate: order.pcdDate, 
+      pcdDate: order.pcdDate,
       terminateDate: order.terminateDate,
-      capacity: Number(order.capacity)||0, 
-      baseRate: Number(order.amount)||0,
+      capacity: Number(order.capacity) || 0,
+      baseRate: Number(order.amount) || 0,
       companyName: order.companyName,
       endA: order.endA || '-',
       endB: order.endB || '-',
     }
   }
 
-  if (!pcdDate || !toDate) {
-    return breakdownBase
-  }
+  if (!pcdDate || !toDate) return breakdownBase
 
-  // Fetch billing records
   let billingData = []
   try {
     const r = await fetch(`/api/billing/monthly?orderId=${order.orderId}`)
     const j = await r.json()
-    if (j.success) {
-      billingData = j.data
-    }
-  } catch(e) {
+    if (j.success) billingData = j.data
+  } catch (e) {
     console.error(`[loadBreakdown] fetch exception:`, e)
   }
 
-  // Determine service window
   let serviceEnd = toDate
   if (termDate) {
     const lastServiceDay = new Date(termDate)
@@ -459,78 +684,84 @@ const loadOrderBreakdown = async (order, toDateStr, splitState) => {
     const monthName = fmtMonthYear(m, y)
     const rec = billingData.find(b => b.month === monthName && b.state === splitState)
 
-    let totalWithGst, monthlyBilling, cgst = 0, sgst = 0, igst = 0, miscSell, received, creditNotes, tdsProvision, tdsConfirm, invoiceNumber, billingDays, startDay, endDay, isSelfGST = false
+    let totalWithGst, monthlyBilling, cgst = 0, sgst = 0, igst = 0,
+        miscSell, received, creditNotes, tdsProvision, tdsConfirm,
+        invoiceNumber, invoiceDate,
+        billingDays, startDay, endDay, isSelfGST = false
     let rawData = null
 
     if (rec) {
-      totalWithGst  = Number(rec.totalWithGst) || 0
-      monthlyBilling = Number(rec.monthlyBilling) || 0
-      cgst = Number(rec.cgst) || 0
-      sgst = Number(rec.sgst) || 0
-      igst = Number(rec.igst) || 0
-      isSelfGST = rec.isSelfGST || false
+      totalWithGst  = Number(rec.totalWithGst)  || 0
+      monthlyBilling= Number(rec.monthlyBilling) || 0
+      cgst          = Number(rec.cgst)  || 0
+      sgst          = Number(rec.sgst)  || 0
+      igst          = Number(rec.igst)  || 0
+      isSelfGST     = rec.isSelfGST || false
       miscSell      = sumTotalWithGst(rec.miscellaneousSell)
       received      = sumAmount(rec.receivedDetails)
-      creditNotes   = sumAmount(rec.creditNotes)
+      creditNotes   = sumTotalWithGst(rec.creditNotes)
       tdsProvision  = sumAmount(rec.tdsProvision)
       tdsConfirm    = sumAmount(rec.tdsConfirm)
       invoiceNumber = rec.invoiceNumber || '-'
-      billingDays   = rec.billingDays || getDaysInMonth(m, y)
-      startDay      = Number((rec.startDate||'').split('-')[0]) || 1
-      endDay        = Number((rec.endDate||'').split('-')[0])   || getDaysInMonth(m, y)
-      
-      // Store raw data for popup
+      invoiceDate   = rec.invoiceDate   || '-'
+      billingDays   = rec.billingDays   || getDaysInMonth(m, y)
+      startDay      = Number((rec.startDate || '').split('-')[0]) || 1
+      endDay        = Number((rec.endDate   || '').split('-')[0]) || getDaysInMonth(m, y)
+
       rawData = {
         miscellaneousSell: rec.miscellaneousSell || [],
-        receivedDetails: rec.receivedDetails || [],
-        creditNotes: rec.creditNotes || [],
-        tdsConfirm: rec.tdsConfirm || [],
-        tdsProvision: rec.tdsProvision || []
+        receivedDetails:   rec.receivedDetails   || [],
+        creditNotes:       rec.creditNotes       || [],
+        tdsConfirm:        rec.tdsConfirm        || [],
+        tdsProvision:      rec.tdsProvision      || []
       }
     } else {
       const daysInM = getDaysInMonth(m, y)
       const isPcd   = y === pcdDate.getFullYear() && m === pcdDate.getMonth()
       const isTerm  = termDate && y === serviceEnd.getFullYear() && m === serviceEnd.getMonth()
 
-      let splitPct  = 1
+      let splitPct = 1
       if (isSplit(order)) {
-        splitPct = splitState === (order.billing1?.state||'')
-          ? (Number(order.splitFactor?.state1Percentage)||50) / 100
-          : (Number(order.splitFactor?.state2Percentage)||50) / 100
+        splitPct = splitState === (order.billing1?.state || '')
+          ? (Number(order.splitFactor?.state1Percentage) || 50) / 100
+          : (Number(order.splitFactor?.state2Percentage) || 50) / 100
       }
 
-      const cap  = Number(order.capacity) || 0
-      const rate = Number(order.amount)   || 0
-      const baseMonthly = cap * rate * splitPct
-      const gstRate     = 0.18
-      const grandTotal  = baseMonthly * (1 + gstRate)
+      const cap          = Number(order.capacity) || 0
+      const rate         = Number(order.amount)   || 0
+      const baseMonthly  = cap * rate * splitPct
+      const gstRate      = 0.18
+      const grandTotal   = baseMonthly * (1 + gstRate)
 
-      startDay = isPcd ? pcdDate.getDate() : 1
-      endDay   = isTerm ? serviceEnd.getDate() : daysInM
-      billingDays = endDay - startDay + 1
-      totalWithGst  = (grandTotal / daysInM) * billingDays
+      startDay       = isPcd  ? pcdDate.getDate()    : 1
+      endDay         = isTerm ? serviceEnd.getDate() : daysInM
+      billingDays    = endDay - startDay + 1
+      totalWithGst   = (grandTotal / daysInM) * billingDays
       monthlyBilling = totalWithGst / (1 + gstRate)
-      igst = totalWithGst - monthlyBilling
+      igst           = totalWithGst - monthlyBilling
       miscSell = received = creditNotes = tdsProvision = tdsConfirm = 0
-      invoiceNumber = '-'
+      invoiceNumber  = '-'
+      invoiceDate    = '-'
+
       rawData = {
         miscellaneousSell: [],
-        receivedDetails: [],
-        creditNotes: [],
-        tdsConfirm: [],
-        tdsProvision: []
+        receivedDetails:   [],
+        creditNotes:       [],
+        tdsConfirm:        [],
+        tdsProvision:      []
       }
     }
 
     breakdownBase.months.push({
       monthYear: monthName, month: m, year: y, billingDays, startDay, endDay,
       monthlyBilling, cgst, sgst, igst, totalWithGst, miscSell,
-      received, creditNotes, tdsProvision, tdsConfirm, invoiceNumber, isSelfGST,
-      rawData
+      received, creditNotes, tdsProvision, tdsConfirm,
+      invoiceNumber, invoiceDate,
+      isSelfGST, rawData
     })
 
     if (termDate && y === serviceEnd.getFullYear() && m === serviceEnd.getMonth()) break
-    cur = new Date(y, m+1, 1)
+    cur = new Date(y, m + 1, 1)
   }
 
   breakdownBase.totalBalance = creditPoolBalance(breakdownBase.months)
@@ -541,60 +772,60 @@ const loadOrderBreakdown = async (order, toDateStr, splitState) => {
 const BreakdownTable = ({ bd, onClose }) => {
   const router = useRouter()
   const [viewingMonth, setViewingMonth] = useState(null)
-  
+
   if (!bd) return null
   const od = bd.orderDetails
-  const sorted = [...bd.months].sort((a,b)=>new Date(a.year,a.month)-new Date(b.year,b.month))
+  const sorted = [...bd.months].sort((a, b) => new Date(a.year, a.month) - new Date(b.year, b.month))
 
-  // Check if we have CGST/SGST or IGST
   const hasCGST = sorted.some(m => (m.cgst ?? 0) > 0)
   const hasSGST = sorted.some(m => (m.sgst ?? 0) > 0)
   const hasIGST = sorted.some(m => (m.igst ?? 0) > 0)
 
-  // Running balance rows
-  const pool0 = sorted.reduce((s,m)=>s+m.received+m.creditNotes+m.tdsConfirm, 0)
+  // ── FIXED: pool = received + creditNotes only (tdsConfirm excluded to avoid double-counting)
+  // tdsConfirm already reduces what customer owes, so netCharge = charges - tdsConfirm
+  // Pool (cash + credit notes) is then allocated against netCharge oldest-first
+  const pool0 = sorted.reduce((s, m) => s + m.received + m.creditNotes, 0)
   let pool = pool0, running = 0, cumUnpaid = 0
   const rows = sorted.map(m => {
     const charges = m.totalWithGst + m.miscSell
     const credits = m.received + m.creditNotes + m.tdsConfirm
     running += charges - credits
+    // Net charge after TDS deduction — what pool must cover
+    const netCharge = Math.max(0, charges - m.tdsConfirm)
     let remAdj = 0
-    if (pool >= charges) { pool -= charges; remAdj = cumUnpaid }
-    else { cumUnpaid += charges - pool; pool = 0; remAdj = cumUnpaid }
+    if (pool >= netCharge) { pool -= netCharge; remAdj = cumUnpaid }
+    else { cumUnpaid += netCharge - pool; pool = 0; remAdj = cumUnpaid }
     return { ...m, running, remAdj }
   })
 
-  const T = rows.reduce((a,m)=>({
-    mb: a.mb+m.monthlyBilling, 
-    cgst: a.cgst+(m.cgst||0),
-    sgst: a.sgst+(m.sgst||0),
-    igst: a.igst+(m.igst||0),
-    total: a.total+m.totalWithGst,
-    misc: a.misc+m.miscSell, 
-    recv: a.recv+m.received, 
-    cn: a.cn+m.creditNotes,
-    tdsp: a.tdsp+m.tdsProvision, 
-    tdsc: a.tdsc+m.tdsConfirm
-  }),{mb:0,cgst:0,sgst:0,igst:0,total:0,misc:0,recv:0,cn:0,tdsp:0,tdsc:0})
+  const T = rows.reduce((a, m) => ({
+    mb: a.mb + m.monthlyBilling,
+    cgst: a.cgst + (m.cgst || 0),
+    sgst: a.sgst + (m.sgst || 0),
+    igst: a.igst + (m.igst || 0),
+    total: a.total + m.totalWithGst,
+    misc: a.misc + m.miscSell,
+    recv: a.recv + m.received,
+    cn: a.cn + m.creditNotes,
+    tdsp: a.tdsp + m.tdsProvision,
+    tdsc: a.tdsc + m.tdsConfirm
+  }), { mb: 0, cgst: 0, sgst: 0, igst: 0, total: 0, misc: 0, recv: 0, cn: 0, tdsp: 0, tdsc: 0 })
 
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/10 to-slate-50 py-6">
         <div className="max-w-[1800px] mx-auto px-4">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-            {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <FileText className="w-5 h-5"/>Monthly Billing Breakdown
+                    <FileText className="w-5 h-5" />Monthly Billing Breakdown
                   </h2>
                   <p className="text-blue-100 text-sm mt-0.5">
                     Order: <b className="text-white">{od.orderId}</b> — State: <b className="text-white">{od.state}</b>
                   </p>
                 </div>
-                
-                {/* Quick Info Chips */}
                 <div className="flex items-center gap-2">
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5">
                     <p className="text-[10px] font-bold text-blue-100 uppercase">Capacity</p>
@@ -610,16 +841,14 @@ const BreakdownTable = ({ bd, onClose }) => {
                   </div>
                 </div>
               </div>
-              
-              <button 
-                onClick={onClose} 
+              <button
+                onClick={onClose}
                 className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium text-sm transition-all"
               >
-                <ArrowLeft className="w-4 h-4"/>Back
+                <ArrowLeft className="w-4 h-4" />Back
               </button>
             </div>
 
-            {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -643,31 +872,31 @@ const BreakdownTable = ({ bd, onClose }) => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {rows.map((m,i)=>(
+                  {rows.map((m, i) => (
                     <tr key={i} className={`transition-all ${i % 2 === 0 ? 'bg-white hover:bg-blue-50/50' : 'bg-gray-50/50 hover:bg-blue-50/50'}`}>
                       <td className="px-3 py-3 font-semibold text-slate-900">{m.monthYear}</td>
                       <td className="px-3 py-3 text-center font-bold text-slate-700">{m.billingDays}</td>
                       <td className="px-3 py-3 text-xs text-slate-500">
-                        <div>{String(m.startDay).padStart(2,'0')}-{String(m.month+1).padStart(2,'0')}-{m.year}</div>
-                        <div>{String(m.endDay).padStart(2,'0')}-{String(m.month+1).padStart(2,'0')}-{m.year}</div>
+                        <div>{String(m.startDay).padStart(2, '0')}-{String(m.month + 1).padStart(2, '0')}-{m.year}</div>
+                        <div>{String(m.endDay).padStart(2, '0')}-{String(m.month + 1).padStart(2, '0')}-{m.year}</div>
                       </td>
                       <td className="px-3 py-3 text-right font-bold text-slate-800">₹{fmt(m.monthlyBilling)}</td>
-                      {hasCGST && <td className="px-3 py-3 text-right text-slate-600">₹{fmt(m.cgst||0)}</td>}
-                      {hasSGST && <td className="px-3 py-3 text-right text-slate-600">₹{fmt(m.sgst||0)}</td>}
-                      {hasIGST && <td className="px-3 py-3 text-right text-slate-600">₹{fmt(m.igst||0)}</td>}
+                      {hasCGST && <td className="px-3 py-3 text-right text-slate-600">₹{fmt(m.cgst || 0)}</td>}
+                      {hasSGST && <td className="px-3 py-3 text-right text-slate-600">₹{fmt(m.sgst || 0)}</td>}
+                      {hasIGST && <td className="px-3 py-3 text-right text-slate-600">₹{fmt(m.igst || 0)}</td>}
                       <td className="px-3 py-3 text-right font-bold text-indigo-700">₹{fmt(m.totalWithGst)}</td>
                       <td className="px-3 py-3 text-right font-bold text-purple-600">₹{fmt(m.miscSell)}</td>
                       <td className="px-3 py-3 text-right font-bold text-green-600">₹{fmt(m.received)}</td>
                       <td className="px-3 py-3 text-right font-bold text-cyan-600">₹{fmt(m.creditNotes)}</td>
                       <td className="px-3 py-3 text-right font-bold text-blue-600">₹{fmt(m.tdsConfirm)}</td>
                       <td className="px-3 py-3 text-right font-bold text-orange-500">₹{fmt(m.tdsProvision)}</td>
-                      <td className={`px-3 py-3 text-right font-extrabold bg-yellow-50 ${m.running>=0?'text-green-700':'text-red-700'}`}>
+                      <td className={`px-3 py-3 text-right font-extrabold bg-yellow-50 ${m.running >= 0 ? 'text-red-700' : 'text-green-700'}`}>
                         ₹{fmt(m.running)}
                       </td>
-                      <td className={`px-3 py-3 text-center font-bold bg-green-50 ${m.remAdj>0?'text-rose-700':'text-emerald-700'}`}>
+                      <td className={`px-3 py-3 text-center font-bold bg-green-50 ${m.remAdj > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
                         {m.remAdj > 0 ? (
                           <span className="inline-flex items-center gap-1 text-red-700">
-                            <X className="w-4 h-4"/>₹{fmt(m.remAdj)}
+                            <X className="w-4 h-4" />₹{fmt(m.remAdj)}
                           </span>
                         ) : (
                           <span className="text-emerald-700">₹{fmt(0)}</span>
@@ -675,7 +904,7 @@ const BreakdownTable = ({ bd, onClose }) => {
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-center">
-                          <button 
+                          <button
                             onClick={() => setViewingMonth(m)}
                             className="p-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
                             title="View Details"
@@ -700,8 +929,8 @@ const BreakdownTable = ({ bd, onClose }) => {
                     <td className="px-3 py-4 text-right text-sm text-cyan-700">₹{fmt(T.cn)}</td>
                     <td className="px-3 py-4 text-right text-sm text-blue-700">₹{fmt(T.tdsc)}</td>
                     <td className="px-3 py-4 text-right text-sm text-orange-600">₹{fmt(T.tdsp)}</td>
-                    <td className={`px-3 py-4 text-right text-lg font-extrabold bg-yellow-100 ${rows[rows.length-1]?.running>=0?'text-green-700':'text-red-700'}`}>
-                      ₹{fmt(rows[rows.length-1]?.running||0)}
+                    <td className={`px-3 py-4 text-right text-lg font-extrabold bg-yellow-100 ${rows[rows.length - 1]?.running >= 0 ? 'text-red-700' : 'text-green-700'}`}>
+                      ₹{fmt(rows[rows.length - 1]?.running || 0)}
                     </td>
                     <td className="px-3 py-4 bg-green-100" colSpan="2"></td>
                   </tr>
@@ -711,37 +940,36 @@ const BreakdownTable = ({ bd, onClose }) => {
           </div>
         </div>
       </div>
-      
-      {/* Month Detail Popup */}
+
       {viewingMonth && <MonthDetailView monthData={viewingMonth} rawData={viewingMonth.rawData} onClose={() => setViewingMonth(null)} />}
     </>
   )
 }
 
 // ─── Simplified table row ─────────────────────────────────────
-const OrderRow = React.memo(({ order, toDateStr, splitState, onViewBreakdown, onBalanceReady, rowKey, hideLsi }) => {
+const OrderRow = React.memo(({ order, toDateStr, splitState, onViewBreakdown, onBalanceReady, rowKey, hideLsi, selectedMonthLabel }) => {
   const router = useRouter()
   const [bd, setBd] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      setLoading(true)
-      const result = await loadOrderBreakdown(order, toDateStr, splitState)
-      if (cancelled) return
-      setBd(result)
-      setLoading(false)
-      onBalanceReady?.(rowKey, result.totalBalance)
-    })()
+      ; (async () => {
+        setLoading(true)
+        const result = await loadOrderBreakdown(order, toDateStr, splitState)
+        if (cancelled) return
+        setBd(result)
+        setLoading(false)
+        onBalanceReady?.(rowKey, result.totalBalance)
+      })()
     return () => { cancelled = true }
   }, [order._id, toDateStr, splitState, rowKey, onBalanceReady])
 
   if (loading) return (
     <tr className="border-b border-slate-100">
-      <td colSpan={hideLsi ? 8 : 9} className="px-4 py-3 text-center text-slate-400 text-sm">
+      <td colSpan={hideLsi ? 9 : 10} className="px-4 py-3 text-center text-slate-400 text-sm">
         <div className="flex items-center justify-center gap-2">
-          <div className="animate-spin h-4 w-4 rounded-full border-b-2 border-blue-500"/>
+          <div className="animate-spin h-4 w-4 rounded-full border-b-2 border-blue-500" />
           <span>Loading {order.orderId}…</span>
         </div>
       </td>
@@ -751,10 +979,10 @@ const OrderRow = React.memo(({ order, toDateStr, splitState, onViewBreakdown, on
   if (!bd) return null
 
   const bal = bd.totalBalance
-  const splitPct = isSplit(order) 
-    ? (splitState === (order.billing1?.state||'') 
-        ? Number(order.splitFactor?.state1Percentage)||50 
-        : Number(order.splitFactor?.state2Percentage)||50)
+  const splitPct = isSplit(order)
+    ? (splitState === (order.billing1?.state || '')
+      ? Number(order.splitFactor?.state1Percentage) || 50
+      : Number(order.splitFactor?.state2Percentage) || 50)
     : 100
 
   return (
@@ -783,17 +1011,25 @@ const OrderRow = React.memo(({ order, toDateStr, splitState, onViewBreakdown, on
       </td>
       <td className="px-4 py-3 text-right bg-yellow-50/60">
         <div className="flex items-center justify-end gap-2">
-          <span className={`text-base font-extrabold ${bal>=0?'text-emerald-600':'text-rose-600'}`}>
+          <span className={`text-base font-extrabold ${bal >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
             ₹{fmt(bal)}
           </span>
-          <button 
-            onClick={()=>onViewBreakdown(bd)} 
+          <button
+            onClick={() => onViewBreakdown(bd)}
             title="View breakdown"
             className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors"
           >
-            <Info className="w-4 h-4 text-blue-500"/>
+            <Info className="w-4 h-4 text-blue-500" />
           </button>
         </div>
+      </td>
+      <td className="px-4 py-3 bg-slate-50/40">
+        <AmountStatusCell
+          orderId={order.orderId}
+          state={splitState || order.billing1?.state || ''}
+          toDateStr={toDateStr}
+          selectedMonthLabel={selectedMonthLabel}
+        />
       </td>
       <td className="px-4 py-3 text-center">
         <span className="inline-flex px-3 py-1 bg-purple-50 text-purple-700 text-sm font-bold rounded">
@@ -801,11 +1037,11 @@ const OrderRow = React.memo(({ order, toDateStr, splitState, onViewBreakdown, on
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <button 
-          onClick={()=>router.push(`/billing/generator?orderId=${order.orderId}`)}
+        <button
+          onClick={() => router.push(`/billing/generator?orderId=${order.orderId}`)}
           className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all"
         >
-          <FileSpreadsheet className="w-4 h-4"/>Generate
+          <FileSpreadsheet className="w-4 h-4" />Generate
         </button>
       </td>
     </tr>
@@ -828,17 +1064,16 @@ export default function OutstandingReportComp() {
 
   const [activeTab, setActiveTab] = useState('period')
   const [statusFilter, setStatusFilter] = useState('active')
-  const [filters, setFilters] = useState({ 
-    search:'', state:'', company:'', entity:'', 
-    from: defaultRange.from, to: defaultRange.to 
+  const [filters, setFilters] = useState({
+    search: '', state: '', company: '', entity: '',
+    from: defaultRange.from, to: defaultRange.to
   })
   const [selYear, setSelYear] = useState(curYear)
   const [selMonth, setSelMonth] = useState('All')
 
-  // Load orders
   useEffect(() => {
     fetch('/api/billing/orders')
-      .then(r=>r.json())
+      .then(r => r.json())
       .then(j => {
         if (j.success) {
           setOrders(j.data)
@@ -848,36 +1083,33 @@ export default function OutstandingReportComp() {
   }, [])
 
   const handleBalanceReady = useCallback((key, bal) => {
-    setRowBalances(prev => ({...prev, [key]: bal}))
+    setRowBalances(prev => ({ ...prev, [key]: bal }))
   }, [])
 
-  // Reset balances when filters change
-  const filterKey = useMemo(()=>JSON.stringify({filters,statusFilter,activeTab,selYear,selMonth}),
-    [filters,statusFilter,activeTab,selYear,selMonth])
-  useEffect(()=>{ setRowBalances({}) },[filterKey])
+  const filterKey = useMemo(() => JSON.stringify({ filters, statusFilter, activeTab, selYear, selMonth }),
+    [filters, statusFilter, activeTab, selYear, selMonth])
+  useEffect(() => { setRowBalances({}) }, [filterKey])
 
-  // Sync toDate from period selector
   useEffect(() => {
     if (activeTab !== 'period') return
     if (selYear === 'All') {
-      setFilters(p=>({...p, from:'', to: toInputFmt(todayDMY)}))
+      setFilters(p => ({ ...p, from: '', to: toInputFmt(todayDMY) }))
     } else {
       const y = selYear
       const mIdx = selMonth === 'All' ? (y === curYear ? curMonthIdx : 11) : ALL_MONTHS.indexOf(selMonth)
-      setFilters(p=>({...p, from:'', to: toInputFmt(getLastDayOfMonth(mIdx, y))}))
+      setFilters(p => ({ ...p, from: '', to: toInputFmt(getLastDayOfMonth(mIdx, y)) }))
     }
   }, [selMonth, selYear, activeTab, todayDMY, curYear, curMonthIdx])
 
-  const yearOptions = useMemo(()=>getYearOptions(),[])
-  const availMonths = useMemo(()=>selYear==='All'?[]:getAvailMonths(parseInt(selYear)),[selYear])
-  const uniqueCompanies = useMemo(()=>[...new Set(orders.map(o=>o.companyName))].filter(Boolean),[orders])
+  const yearOptions = useMemo(() => getYearOptions(), [])
+  const availMonths = useMemo(() => selYear === 'All' ? [] : getAvailMonths(parseInt(selYear)), [selYear])
+  const uniqueCompanies = useMemo(() => [...new Set(orders.map(o => o.companyName))].filter(Boolean), [orders])
 
   const handleYearChange = (y) => {
-    if (y==='All') { setSelYear(y); setSelMonth('All') }
-    else { const yn=parseInt(y); setSelYear(yn); setSelMonth(yn===curYear?ALL_MONTHS[curMonthIdx]:'All') }
+    if (y === 'All') { setSelYear(y); setSelMonth('All') }
+    else { const yn = parseInt(y); setSelYear(yn); setSelMonth(yn === curYear ? ALL_MONTHS[curMonthIdx] : 'All') }
   }
 
-  // Filter orders
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       if (filters.search) {
@@ -899,12 +1131,12 @@ export default function OutstandingReportComp() {
       let matchDate = true
       if (activeTab === 'period' && selYear !== 'All') {
         const yn = parseInt(selYear)
-        const mIdx = selMonth === 'All' ? (yn===curYear?curMonthIdx:11) : ALL_MONTHS.indexOf(selMonth)
-        const endOfPeriod = new Date(yn, mIdx+1, 0, 23, 59, 59)
+        const mIdx = selMonth === 'All' ? (yn === curYear ? curMonthIdx : 11) : ALL_MONTHS.indexOf(selMonth)
+        const endOfPeriod = new Date(yn, mIdx + 1, 0, 23, 59, 59)
         matchDate = pcdDate <= endOfPeriod
       } else if (activeTab === 'dateRange' && filters.from && filters.to) {
-        const from = new Date(filters.from); from.setHours(0,0,0,0)
-        const to = new Date(filters.to); to.setHours(23,59,59,999)
+        const from = new Date(filters.from); from.setHours(0, 0, 0, 0)
+        const to = new Date(filters.to); to.setHours(23, 59, 59, 999)
         matchDate = pcdDate <= to && (!termDate || termDate >= from)
       }
 
@@ -912,22 +1144,43 @@ export default function OutstandingReportComp() {
     })
   }, [orders, filters, statusFilter, activeTab, selYear, selMonth, curYear, curMonthIdx])
 
-  const expectedRows = useMemo(()=>filteredOrders.reduce((c,o)=>c+(isSplit(o)?2:1),0),[filteredOrders])
-  const totalBalance = useMemo(()=>Object.values(rowBalances).reduce((s,b)=>s+b,0),[rowBalances])
-  const isCalc = useMemo(()=>expectedRows>0&&Object.keys(rowBalances).length<expectedRows,[rowBalances,expectedRows])
+  const expectedRows = useMemo(() => filteredOrders.reduce((c, o) => c + (isSplit(o) ? 2 : 1), 0), [filteredOrders])
+  const totalBalance = useMemo(() => Object.values(rowBalances).reduce((s, b) => s + b, 0), [rowBalances])
+  const isCalc = useMemo(() => expectedRows > 0 && Object.keys(rowBalances).length < expectedRows, [rowBalances, expectedRows])
 
-  const toDateStr = useMemo(()=>toStorageFmt(filters.to)||todayDMY,[filters.to,todayDMY])
+  const toDateStr = useMemo(() => toStorageFmt(filters.to) || todayDMY, [filters.to, todayDMY])
 
-  const clearFilters = useCallback(()=>{
+  const selectedMonthLabel = useMemo(() => {
+    if (activeTab === 'dateRange') {
+      if (!filters.to) return null
+      const [yyyy, mm] = filters.to.split('-').map(Number)
+      if (!yyyy || !mm) return null
+      return `${MONTH_NAMES[mm - 1]} ${yyyy}`
+    }
+
+    if (selYear === 'All') return null
+
+    const yn = parseInt(selYear)
+
+    if (selMonth !== 'All') {
+      const mIdx = ALL_MONTHS.indexOf(selMonth)
+      return mIdx >= 0 ? `${MONTH_NAMES[mIdx]} ${yn}` : null
+    }
+
+    const lastMIdx = (yn === curYear) ? curMonthIdx : 11
+    return `${MONTH_NAMES[lastMIdx]} ${yn}`
+  }, [activeTab, selYear, selMonth, curYear, curMonthIdx, filters.to])
+
+  const clearFilters = useCallback(() => {
     const dr = getDefaultDateRange()
-    setFilters({search:'',state:'',company:'',entity:'',from:dr.from,to:dr.to})
+    setFilters({ search: '', state: '', company: '', entity: '', from: dr.from, to: dr.to })
     setActiveTab('period'); setSelYear(curYear); setSelMonth(ALL_MONTHS[curMonthIdx]); setStatusFilter('active')
-  },[curYear,curMonthIdx])
+  }, [curYear, curMonthIdx])
 
-  const hasFilters = filters.search||filters.state||filters.company||filters.entity
-  const periodLabel = selYear==='All' ? 'All Time' : selMonth==='All' ? `Up to Dec ${selYear}` : `Up to ${selMonth} ${selYear}`
+  const hasFilters = filters.search || filters.state || filters.company || filters.entity
+  const periodLabel = selYear === 'All' ? 'All Time' : selMonth === 'All' ? `Up to Dec ${selYear}` : `Up to ${selMonth} ${selYear}`
 
-  if (viewBreakdown) return <BreakdownTable bd={viewBreakdown} onClose={()=>setViewBD(null)}/>
+  if (viewBreakdown) return <BreakdownTable bd={viewBreakdown} onClose={() => setViewBD(null)} />
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/10 to-slate-50">
@@ -936,78 +1189,86 @@ export default function OutstandingReportComp() {
         {/* Controls */}
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm mb-4">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-slate-900">Outstanding Balance Report</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Bso Outstanding Balance Report</h1>
             <p className="text-sm text-slate-500 mt-0.5">Cumulative balances per order up to selected period</p>
           </div>
 
-          {/* Filters */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <div className="relative flex-1 min-w-[180px]">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"/>
-              <input 
-                type="text" 
-                placeholder="Search Order / LSI…" 
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search Order / LSI…"
                 className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={filters.search} 
-                onChange={e=>setFilters(p=>({...p,search:e.target.value}))}
+                value={filters.search}
+                onChange={e => setFilters(p => ({ ...p, search: e.target.value }))}
               />
             </div>
-            <select 
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 min-w-[120px]" 
-              value={filters.state} 
-              onChange={e=>setFilters(p=>({...p,state:e.target.value}))}
+            <select
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 min-w-[120px]"
+              value={filters.state}
+              onChange={e => setFilters(p => ({ ...p, state: e.target.value }))}
             >
               <option value="">All States</option>
-              {INDIAN_STATES.map(s=><option key={s} value={s}>{s}</option>)}
+              {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select 
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 min-w-[140px]" 
-              value={filters.company} 
-              onChange={e=>setFilters(p=>({...p,company:e.target.value}))}
+            <select
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+              value={filters.company}
+              onChange={e => setFilters(p => ({ ...p, company: e.target.value }))}
             >
               <option value="">All Companies</option>
-              {uniqueCompanies.map(c=><option key={c} value={c}>{c.slice(0,25)}</option>)}
+              {uniqueCompanies.map(c => <option key={c} value={c}>{c.slice(0, 25)}</option>)}
             </select>
-            <select 
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 min-w-[110px]" 
-              value={filters.entity} 
-              onChange={e=>setFilters(p=>({...p,entity:e.target.value}))}
+            <select
+              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 min-w-[110px]"
+              value={filters.entity}
+              onChange={e => setFilters(p => ({ ...p, entity: e.target.value }))}
             >
               <option value="">All Entities</option>
-              {ENTITIES.map(e=><option key={e} value={e}>{e}</option>)}
+              {ENTITIES.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
-            <select 
-              className="px-3 py-2 border border-emerald-300 rounded-lg text-sm bg-emerald-50 text-emerald-700 font-semibold focus:ring-2 focus:ring-emerald-400 min-w-[140px]" 
-              value={statusFilter} 
-              onChange={e=>setStatusFilter(e.target.value)}
+            <select
+              className="px-3 py-2 border border-emerald-300 rounded-lg text-sm bg-emerald-50 text-emerald-700 font-semibold focus:ring-2 focus:ring-emerald-400 min-w-[140px]"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
             >
               <option value="active">Active (PCD)</option>
               <option value="inactive">Inactive (Terminate)</option>
             </select>
             {hasFilters && (
-              <button 
-                onClick={clearFilters} 
+              <button
+                onClick={clearFilters}
                 className="flex items-center gap-1 px-3 py-2 bg-rose-50 text-rose-600 text-sm rounded-lg border border-rose-200 hover:bg-rose-100"
               >
-                <X className="w-3.5 h-3.5"/>Clear
+                <X className="w-3.5 h-3.5" />Clear
               </button>
             )}
-            <div className="flex-1"/>
-            
-            {/* Stats */}
+            <div className="flex-1" />
+
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center">
               <p className="text-[10px] font-bold text-slate-400 uppercase">Orders</p>
               <p className="text-2xl font-extrabold text-slate-900">{filteredOrders.length}</p>
             </div>
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 text-center min-w-[160px]">
-              <p className="text-[10px] font-bold text-emerald-500 uppercase">Total Balance</p>
+            <div className={`rounded-xl px-4 py-2.5 text-center min-w-[160px] 
+  ${totalBalance < 0
+                ? 'bg-emerald-50 border border-emerald-200'
+                : 'bg-rose-50 border border-rose-200'
+              }`}>
+              <p className={`text-[10px] font-bold uppercase 
+    ${totalBalance < 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                Total Balance
+              </p>
               {isCalc ? (
                 <div className="flex items-center justify-center gap-2 mt-1">
-                  <div className="animate-spin h-5 w-5 rounded-full border-b-2 border-emerald-600"/>
-                  <span className="text-sm font-semibold text-emerald-600">Calculating…</span>
+                  <div className="animate-spin h-5 w-5 rounded-full border-b-2 border-slate-600" />
+                  <span className="text-sm font-semibold text-slate-600">Calculating…</span>
                 </div>
               ) : (
-                <p className="text-xl font-extrabold text-emerald-700">₹{fmt(totalBalance)}</p>
+                <p className={`text-xl font-extrabold 
+      ${totalBalance < 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  ₹{fmt(totalBalance)}
+                </p>
               )}
             </div>
           </div>
@@ -1015,25 +1276,25 @@ export default function OutstandingReportComp() {
           {/* Tabs */}
           <div className="flex items-center justify-between border-b border-slate-200 mb-4">
             <div className="flex">
-              {[['period','Period Selector'],['dateRange','Date Range']].map(([t,l])=>(
-                <button 
-                  key={t} 
-                  onClick={()=>{setActiveTab(t); const dr=getDefaultDateRange(); setFilters(p=>({...p,from:dr.from,to:dr.to}))}}
-                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${activeTab===t?'text-teal-600 border-teal-600':'text-slate-500 border-transparent hover:text-slate-700'}`}
+              {[['period', 'Period Selector'], ['dateRange', 'Date Range']].map(([t, l]) => (
+                <button
+                  key={t}
+                  onClick={() => { setActiveTab(t); const dr = getDefaultDateRange(); setFilters(p => ({ ...p, from: dr.from, to: dr.to })) }}
+                  className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-all ${activeTab === t ? 'text-teal-600 border-teal-600' : 'text-slate-500 border-transparent hover:text-slate-700'}`}
                 >
                   {l}
                 </button>
               ))}
             </div>
             <div className="flex gap-2 mb-0.5">
-              <button 
-                onClick={()=>setHideLsi(!hideLsi)} 
+              <button
+                onClick={() => setHideLsi(!hideLsi)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200"
               >
-                {hideLsi?<Eye className="w-4 h-4"/>:<EyeOff className="w-4 h-4"/>} {hideLsi?'Show':'Hide'} LSI
+                {hideLsi ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />} {hideLsi ? 'Show' : 'Hide'} LSI
               </button>
               <button className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                <Download className="w-4 h-4"/>Export
+                <Download className="w-4 h-4" />Export
               </button>
             </div>
           </div>
@@ -1043,32 +1304,32 @@ export default function OutstandingReportComp() {
             <div className="flex flex-wrap items-center gap-4 px-1">
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
                 <label className="text-xs font-bold text-slate-500 uppercase">Year</label>
-                <select 
+                <select
                   className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-teal-400"
-                  value={selYear} 
-                  onChange={e=>handleYearChange(e.target.value)}
+                  value={selYear}
+                  onChange={e => handleYearChange(e.target.value)}
                 >
-                  {yearOptions.map(y=><option key={y} value={y}>{y}</option>)}
+                  {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
               {selYear !== 'All' && (
                 <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex-1 min-w-[360px]">
                   <label className="text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Month</label>
                   <div className="flex gap-1.5 flex-wrap">
-                    <button 
-                      onClick={()=>setSelMonth('All')} 
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selMonth==='All'?'bg-teal-500 text-white':'bg-white text-slate-700 border border-slate-200 hover:border-teal-300'}`}
+                    <button
+                      onClick={() => setSelMonth('All')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${selMonth === 'All' ? 'bg-teal-500 text-white' : 'bg-white text-slate-700 border border-slate-200 hover:border-teal-300'}`}
                     >
                       All
                     </button>
-                    {ALL_MONTHS.map(m=>{
-                      const ok=availMonths.includes(m)
+                    {ALL_MONTHS.map(m => {
+                      const ok = availMonths.includes(m)
                       return (
-                        <button 
-                          key={m} 
-                          onClick={()=>ok&&setSelMonth(m)} 
+                        <button
+                          key={m}
+                          onClick={() => ok && setSelMonth(m)}
                           disabled={!ok}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${selMonth===m?'bg-teal-500 text-white':ok?'bg-white text-slate-700 border border-slate-200 hover:border-teal-300':'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'}`}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${selMonth === m ? 'bg-teal-500 text-white' : ok ? 'bg-white text-slate-700 border border-slate-200 hover:border-teal-300' : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'}`}
                         >
                           {m}
                         </button>
@@ -1086,15 +1347,15 @@ export default function OutstandingReportComp() {
           {/* Date range */}
           {activeTab === 'dateRange' && (
             <div className="flex flex-wrap gap-4 px-1">
-              {[['From','from'],['To','to']].map(([l,k])=>(
+              {[['From', 'from'], ['To', 'to']].map(([l, k]) => (
                 <div key={k} className="flex items-center gap-2">
                   <label className="text-sm font-semibold text-slate-600">{l}:</label>
-                  <input 
-                    type="date" 
+                  <input
+                    type="date"
                     className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={filters[k]} 
+                    value={filters[k]}
                     max={toInputFmt(todayDMY)}
-                    onChange={e=>setFilters(p=>({...p,[k]:e.target.value}))}
+                    onChange={e => setFilters(p => ({ ...p, [k]: e.target.value }))}
                   />
                 </div>
               ))}
@@ -1102,7 +1363,7 @@ export default function OutstandingReportComp() {
           )}
         </div>
 
-        {/* Simplified Table */}
+        {/* Table */}
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1115,6 +1376,7 @@ export default function OutstandingReportComp() {
                   <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Company</th>
                   <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">State</th>
                   <th className="px-4 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider bg-yellow-50">Balance</th>
+                  <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider bg-slate-50">Amount Status</th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Split</th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -1123,41 +1385,44 @@ export default function OutstandingReportComp() {
                 {filteredOrders.map((order, idx) => {
                   const split = isSplit(order)
                   if (split) {
-                    const s1 = order.billing1?.state||''
-                    const s2 = order.billing2?.state||''
+                    const s1 = order.billing1?.state || ''
+                    const s2 = order.billing2?.state || ''
                     return (
                       <React.Fragment key={`${order._id}-${idx}`}>
-                        <OrderRow 
-                          rowKey={`${order._id}-${s1}-${idx}`} 
-                          order={order} 
-                          toDateStr={toDateStr} 
-                          splitState={s1} 
-                          onViewBreakdown={setViewBD} 
+                        <OrderRow
+                          rowKey={`${order._id}-${s1}-${idx}`}
+                          order={order}
+                          toDateStr={toDateStr}
+                          splitState={s1}
+                          onViewBreakdown={setViewBD}
                           onBalanceReady={handleBalanceReady}
                           hideLsi={hideLsi}
+                          selectedMonthLabel={selectedMonthLabel}
                         />
-                        <OrderRow 
-                          rowKey={`${order._id}-${s2}-${idx}`} 
-                          order={order} 
-                          toDateStr={toDateStr} 
-                          splitState={s2} 
-                          onViewBreakdown={setViewBD} 
+                        <OrderRow
+                          rowKey={`${order._id}-${s2}-${idx}`}
+                          order={order}
+                          toDateStr={toDateStr}
+                          splitState={s2}
+                          onViewBreakdown={setViewBD}
                           onBalanceReady={handleBalanceReady}
                           hideLsi={hideLsi}
+                          selectedMonthLabel={selectedMonthLabel}
                         />
                       </React.Fragment>
                     )
                   }
                   return (
-                    <OrderRow 
-                      key={`${order._id}-${idx}`} 
-                      rowKey={`${order._id}-main-${idx}`} 
-                      order={order} 
-                      toDateStr={toDateStr} 
-                      splitState={order.billing1?.state||''} 
-                      onViewBreakdown={setViewBD} 
+                    <OrderRow
+                      key={`${order._id}-${idx}`}
+                      rowKey={`${order._id}-main-${idx}`}
+                      order={order}
+                      toDateStr={toDateStr}
+                      splitState={order.billing1?.state || ''}
+                      onViewBreakdown={setViewBD}
                       onBalanceReady={handleBalanceReady}
                       hideLsi={hideLsi}
+                      selectedMonthLabel={selectedMonthLabel}
                     />
                   )
                 })}

@@ -220,7 +220,7 @@ const ReceiptMonthDetailView = ({ monthData, rawData, onClose }) => {
 
                 {/* Received */}
                 <div className="flex justify-between items-center py-2 px-3 bg-green-50 rounded border border-green-100">
-                  <span className="text-sm text-green-700 font-semibold">Received</span>
+                  <span className="text-sm text-green-700 font-semibold">Payment</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-green-900">₹{fmt(monthData.received)}</span>
                     {rawData?.receivedDetails?.length > 0 && (
@@ -460,7 +460,7 @@ const ReceiptBreakdownTable = ({ bd, onClose }) => {
             {/* Summary Bar */}
             <div className="grid grid-cols-4 divide-x divide-slate-200 border-b border-slate-200 bg-slate-50">
               {[
-                { label:'Total Received',           value:T.recv,  color:'text-green-700',  bg:'bg-green-50' },
+                { label:'Total Payment',           value:T.recv,  color:'text-green-700',  bg:'bg-green-50' },
                 { label:'Total Credit Notes+GST',value:T.cn,    color:'text-cyan-700',   bg:'bg-cyan-50'  },
                 { label:'Total TDS Confirm',         value:T.tdsc,  color:'text-blue-700',   bg:'bg-blue-50'  },
                 { label:'Total TDS Provision',       value:T.tdsp,  color:'text-orange-600', bg:'bg-orange-50'},
@@ -478,7 +478,7 @@ const ReceiptBreakdownTable = ({ bd, onClose }) => {
                 <thead>
                   <tr className="bg-gradient-to-r from-gray-50 to-emerald-50 border-b-2 border-gray-200">
                     <th className="px-3 py-4 text-left   text-xs font-bold text-gray-700 uppercase tracking-wider">Month</th>
-                    <th className="px-3 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">Received</th>
+                    <th className="px-3 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">Payment</th>
                     <th className="px-3 py-4 text-right  text-xs font-bold text-gray-700  uppercase tracking-wider">Credit Notes+Gst<br/></th>
                     <th className="px-3 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">TDS Confirm</th>
                     <th className="px-3 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">TDS Provision</th>
@@ -783,7 +783,7 @@ export default function ReceiptSummaryReport() {
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm mb-4">
           <div className="mb-4">
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Receipt className="w-6 h-6 text-emerald-600"/>Receipt Summary Report
+              <Receipt className="w-6 h-6 text-emerald-600"/>Bso Payment Summary Report
             </h1>
             <p className="text-sm text-slate-500 mt-0.5">Period-based receipts — Received, Credit Notes (incl. GST) &amp; TDS per order</p>
           </div>
@@ -830,11 +830,11 @@ export default function ReceiptSummaryReport() {
               <p className="text-2xl font-extrabold text-slate-900">{filteredOrders.length}</p>
             </div>
             {[
-              {label:'Received',             val:totals.received,    color:'text-green-700',  bg:'bg-green-50',  border:'border-green-200'},
+              {label:'Payment',             val:totals.received,    color:'text-green-700',  bg:'bg-green-50',  border:'border-green-200'},
               {label:'Credit Notes+ Gst', val:totals.creditNotes, color:'text-cyan-700',   bg:'bg-cyan-50',   border:'border-cyan-200'},
               {label:'TDS Confirm',          val:totals.tdsConfirm,  color:'text-blue-700',   bg:'bg-blue-50',   border:'border-blue-200'},
               {label:'TDS Provision',        val:totals.tdsProvision,color:'text-orange-600', bg:'bg-orange-50', border:'border-orange-200'},
-              {label:'Total Receipts',       val:totals.total,       color:'text-emerald-700',bg:'bg-emerald-50',border:'border-emerald-300'},
+              {label:'Total Payment',       val:totals.total,       color:'text-emerald-700',bg:'bg-emerald-50',border:'border-emerald-300'},
             ].map(({label,val,color,bg,border})=>(
               <div key={label} className={`${bg} border ${border} rounded-xl px-4 py-2.5 text-center min-w-[130px]`}>
                 <p className={`text-[10px] font-bold uppercase ${color} opacity-80`}>{label}</p>
@@ -936,13 +936,13 @@ export default function ReceiptSummaryReport() {
                   <th className="px-4 py-4 text-left   text-xs font-bold text-gray-700 uppercase tracking-wider">End B</th>
                   <th className="px-4 py-4 text-left   text-xs font-bold text-gray-700 uppercase tracking-wider">Company</th>
                   <th className="px-4 py-4 text-left   text-xs font-bold text-gray-700 uppercase tracking-wider">State</th>
-                  <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">Received</th>
+                  <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">Payment</th>
                   <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700  uppercase tracking-wider">
                     Credit Notes+Gst<br/>
                   </th>
                   <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">TDS Confirm</th>
                   <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider">TDS Provision</th>
-                  <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider bg-emerald-50">Total Receipts</th>
+                  <th className="px-4 py-4 text-right  text-xs font-bold text-gray-700 uppercase tracking-wider bg-emerald-50">Total Payment</th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Split</th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Service Period</th>
                 </tr>

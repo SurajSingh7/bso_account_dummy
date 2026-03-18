@@ -859,7 +859,7 @@ export default function BillingReportSummary() {
         {/* Controls */}
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm mb-4">
           <div className="mb-4">
-            <h1 className="text-2xl font-bold text-slate-900">Billing Report Summary</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Bso Billing Report Summary</h1>
             <p className="text-sm text-slate-500 mt-0.5">Period-based billing totals per order — includes Credit Notes &amp; Net Billing</p>
           </div>
 

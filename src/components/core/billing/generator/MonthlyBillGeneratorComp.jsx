@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Calendar, RefreshCw, FileText, Trash2, Edit2, Save, X, ArrowLeft,
@@ -9,34 +9,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// ── BSO TDS Config ─────────────────────────────────────────────────────────────
-// Add/edit entries here. tds: 1 means 1% of basic, tds: 2 means 2% of basic.
-const bsoTdsConf = [
-  { name: "Airtel", tds: 1 },
-  { name: "Vodafone", tds: 2 },
-  { name: "Tata", tds: 1 },
-];
-
-/**
- * Given a billing record, return a tdsConfirm entry if the companyName
- * matches any entry in bsoTdsConf, otherwise return null.
- */
-const buildAutoTdsConfirmEntry = (billing) => {
-  if (!billing) return null;
-  const match = bsoTdsConf.find(
-    (b) => billing.companyName?.toLowerCase().includes(b.name.toLowerCase())
-  );
-  if (!match) return null;
-  const basic = Number(billing.monthlyBilling) || 0;
-  const tdsAmount = Math.round((basic * match.tds) / 100 * 100) / 100;
-  return {
-    date: billing.startDate || getCurrentDateDDMMYYYY(),
-    amount: tdsAmount,
-    notes: `Auto TDS @${match.tds}% of ₹${basic.toFixed(2)} (${match.name})`,
-  };
-};
-
-// Date utility functions for DD-MM-YYYY format
+// ── Date utility functions for DD-MM-YYYY format ───────────────────────────────
 const formatDateToDisplay = (dateStr) => {
   if (!dateStr) return '';
   if (dateStr.includes('-') && dateStr.split('-')[0].length <= 2) return dateStr;
@@ -105,6 +78,23 @@ const buildCNInvoiceNumber = (billingMonth) => {
   const monthAbbr = monthName.substring(0, 3).toUpperCase();
   const seq = Date.now().toString().slice(-4);
   return `CN-${monthAbbr}-${yearStr}-${seq}`;
+};
+
+// ── BSO TDS helper — uses the fetched bsoTdsConf array ────────────────────────
+// Takes bso string (from order.bso) + the live config array
+const buildAutoTdsConfirmEntry = (billing, bso, bsoTdsConf) => {
+  if (!bso || !bsoTdsConf || bsoTdsConf.length === 0) return null;
+  const match = bsoTdsConf.find(
+    (b) => b.isActive !== false && bso.toLowerCase().includes(b.name.toLowerCase())
+  );
+  if (!match) return null;
+  const basic = Number(billing.monthlyBilling) || 0;
+  const tdsAmount = Math.round((basic * match.tds) / 100 * 100) / 100;
+  return {
+    date: billing.startDate || getCurrentDateDDMMYYYY(),
+    amount: tdsAmount,
+    notes: `Auto TDS @${match.tds}% of ₹${basic.toFixed(2)} (BSO: ${bso})`,
+  };
 };
 
 // ─── BillingDetailModal ────────────────────────────────────────────────────────
@@ -493,7 +483,6 @@ const CreditNotesSection = ({
 
           return (
             <div key={index} className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-
               {hasPeriod ? (
                 <div className="px-4 py-2.5 bg-gradient-to-r from-cyan-50 to-teal-50 border-b border-cyan-200 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-cyan-800 font-semibold">
                   <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0 text-cyan-600" />
@@ -519,7 +508,6 @@ const CreditNotesSection = ({
                 </div>
               ) : null}
 
-              {/* Row 1: Submit Date | Period Start | Period End | Invoice Number */}
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 block">Submit Date</label>
@@ -529,7 +517,6 @@ const CreditNotesSection = ({
                     className={`w-full px-3 py-2 border rounded-lg text-sm ${isEditMode ? 'border-blue-300 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none' : 'border-gray-200 bg-white'}`} />
                   {detail.date && <p className="text-xs text-gray-500 mt-1">{detail.date}</p>}
                 </div>
-
                 <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 block">
                     Period Start <span className="text-cyan-600 font-normal">({currentMonth})</span>
@@ -541,7 +528,6 @@ const CreditNotesSection = ({
                     className={`w-full px-3 py-2 border rounded-lg text-sm ${isEditMode ? 'border-cyan-300 bg-white focus:ring-2 focus:ring-cyan-500 focus:outline-none' : 'border-gray-200 bg-white'}`} />
                   {detail.periodStart && <p className="text-xs text-gray-500 mt-1">{detail.periodStart}</p>}
                 </div>
-
                 <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 block">
                     Period End <span className="text-cyan-600 font-normal">({monthInfo?.totalDays} days total)</span>
@@ -553,7 +539,6 @@ const CreditNotesSection = ({
                     className={`w-full px-3 py-2 border rounded-lg text-sm ${isEditMode ? 'border-cyan-300 bg-white focus:ring-2 focus:ring-cyan-500 focus:outline-none' : 'border-gray-200 bg-white'}`} />
                   {detail.periodEnd && <p className="text-xs text-gray-500 mt-1">{detail.periodEnd}</p>}
                 </div>
-
                 <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
                     Invoice Number
@@ -567,7 +552,6 @@ const CreditNotesSection = ({
                 </div>
               </div>
 
-              {/* Row 2: Amount | CGST | SGST | IGST | Total+GST | Notes */}
               <div className="px-4 pb-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
@@ -722,6 +706,31 @@ const MonthlyBillGeneratorComp = () => {
   const [viewMode, setViewMode] = useState('view');
   const [selectedState, setSelectedState] = useState('all');
 
+  // ── BSO TDS config — fetched from API once on mount ──────────────────────────
+  const [bsoTdsConf, setBsoTdsConf] = useState([]);
+  const bsoTdsFetched = useRef(false);
+
+  useEffect(() => {
+    if (bsoTdsFetched.current) return;
+    bsoTdsFetched.current = true;
+    fetch('/api/billing/bso-tds-config')
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          // Only keep active entries; map to { name, tds } shape used by helper
+          setBsoTdsConf(
+            result.data
+              .filter(b => b.isActive !== false)
+              .map(b => ({ name: b.name, tds: b.tds }))
+          );
+        } else {
+          console.warn('Failed to load BSO TDS config:', result.error);
+        }
+      })
+      .catch(err => console.error('BSO TDS config fetch error:', err));
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (orderId) { fetchOrderDetails(); fetchBillings(); }
   }, [orderId]);
@@ -758,28 +767,62 @@ const MonthlyBillGeneratorComp = () => {
   }), [filteredBillings]);
 
   const billingsWithBalance = useMemo(() => {
-    let runningBalance = 0, cumulativeUnpaid = 0;
+    let runningBalance = 0;
     const monthOrder = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const sorted = [...filteredBillings].sort((a, b) => {
       const pm = (s) => { const [mn, y] = s.split(' '); return new Date(parseInt(y), monthOrder.indexOf(mn)); };
       return pm(a.month) - pm(b.month);
     });
+
+    // Credit pool = all received + credit notes + tdsConfirm across ALL months (oldest-first allocation)
+    // We compare pool against NET charges (charge - tdsConfirm) so tdsConfirm is not double-counted.
+    // tdsConfirm reduces what the customer owes, so effective charge = totalWithGst + misc - tdsConfirm
     const totalCreditPool = sorted.reduce((sum, b) =>
-      sum + calculateTotal(b.receivedDetails) + calculateCreditNotesTotal(b.creditNotes, b.isSelfGST) + calculateTotal(b.tdsConfirm), 0);
-    let creditPool = totalCreditPool;
+      sum + calculateTotal(b.receivedDetails) + calculateCreditNotesTotal(b.creditNotes, b.isSelfGST), 0);
+
+    let creditPool = totalCreditPool; // unallocated cash/credit-note pool (tdsConfirm handled separately)
+    let unpaidCarry = 0;             // cumulative unpaid amount carried forward
+
     return sorted.map((billing) => {
-      const monthlyReceived = calculateTotal(billing.receivedDetails);
+      const monthlyReceived    = calculateTotal(billing.receivedDetails);
       const monthlyCreditNotes = calculateCreditNotesTotal(billing.creditNotes, billing.isSelfGST);
-      const monthlyMiscSell = calculateMiscSellTotal(billing.miscellaneousSell);
-      const monthlyTDSProv = calculateTotal(billing.tdsProvision);
-      const monthlyTDSConf = calculateTotal(billing.tdsConfirm);
-      const monthlyCredits = monthlyReceived + monthlyCreditNotes + monthlyTDSConf;
+      const monthlyMiscSell    = calculateMiscSellTotal(billing.miscellaneousSell);
+      const monthlyTDSProv     = calculateTotal(billing.tdsProvision);
+      const monthlyTDSConf     = calculateTotal(billing.tdsConfirm);
+
       const monthlyCharges = billing.totalWithGst + monthlyMiscSell;
+      const monthlyCredits = monthlyReceived + monthlyCreditNotes + monthlyTDSConf;
+
+      // Running cumulative balance (tdsConfirm is a credit so it reduces balance)
       runningBalance += monthlyCharges - monthlyCredits;
+
+      // Net charge after TDS: what the customer still owes after TDS deduction
+      // Pool (cash + credit notes) covers net charges; TDS is already a confirmed deduction
+      const netCharge = Math.max(0, monthlyCharges - monthlyTDSConf);
+
+      // Remaining Adj: allocate pool oldest-first against net charges
       let totalRemainingAdjustment = 0;
-      if (creditPool >= monthlyCharges) { creditPool -= monthlyCharges; totalRemainingAdjustment = cumulativeUnpaid; }
-      else { const u = monthlyCharges - creditPool; creditPool = 0; cumulativeUnpaid += u; totalRemainingAdjustment = cumulativeUnpaid; }
-      return { ...billing, monthlyReceived, monthlyCreditNotes, monthlyMiscSell, monthlyTDSProv, monthlyTDSConf, monthlyCharges, totalBalance: runningBalance, totalRemainingAdjustment: Math.max(0, totalRemainingAdjustment) };
+      if (creditPool >= netCharge) {
+        creditPool -= netCharge;
+        totalRemainingAdjustment = unpaidCarry;
+      } else {
+        const shortfall = netCharge - creditPool;
+        creditPool = 0;
+        unpaidCarry += shortfall;
+        totalRemainingAdjustment = unpaidCarry;
+      }
+
+      return {
+        ...billing,
+        monthlyReceived,
+        monthlyCreditNotes,
+        monthlyMiscSell,
+        monthlyTDSProv,
+        monthlyTDSConf,
+        monthlyCharges,
+        totalBalance: runningBalance,
+        totalRemainingAdjustment: Math.max(0, totalRemainingAdjustment),
+      };
     });
   }, [filteredBillings]);
 
@@ -798,84 +841,85 @@ const MonthlyBillGeneratorComp = () => {
     finalBalance: billingsWithBalance.length > 0 ? billingsWithBalance[billingsWithBalance.length - 1].totalBalance : 0,
   }), [billingsWithBalance]);
 
-  // ── Auto-generate: create billings then auto-patch tdsConfirm for matching companies
-// Helper now takes bso string directly instead of matching on companyName
-const buildAutoTdsConfirmEntry = (billing, bso) => {
-  if (!bso) return null;
-  const match = bsoTdsConf.find(
-    (b) => bso.toLowerCase().includes(b.name.toLowerCase())
-  );
-  if (!match) return null;
-  const basic = Number(billing.monthlyBilling) || 0;
-  const tdsAmount = Math.round((basic * match.tds) / 100 * 100) / 100;
-  return {
-    date: billing.startDate || getCurrentDateDDMMYYYY(),
-    amount: tdsAmount,
-    notes: `Auto TDS @${match.tds}% of ₹${basic.toFixed(2)} (BSO: ${bso})`,
-  };
-};
+  // ── Auto Generate with live bsoTdsConf from API ────────────────────────────
+  const handleAutoGenerate = async () => {
+    if (!orderId) return alert('No order ID found in URL');
+    setLoading(true);
+    try {
+      // Step 1: Fetch order to get BSO field
+      const orderRes = await fetch(`/api/billing/orders?orderId=${orderId}`);
+      const orderResult = await orderRes.json();
+      const bso = orderResult.success && orderResult.data.length > 0
+        ? orderResult.data[0].bso || ''
+        : '';
 
+      // Step 2: Ensure bsoTdsConf is loaded (re-fetch if empty — safety net)
+      let activeBsoConf = bsoTdsConf;
+      if (activeBsoConf.length === 0) {
+        try {
+          const tdsRes = await fetch('/api/billing/bso-tds-config');
+          const tdsResult = await tdsRes.json();
+          if (tdsResult.success) {
+            activeBsoConf = tdsResult.data
+              .filter(b => b.isActive !== false)
+              .map(b => ({ name: b.name, tds: b.tds }));
+            setBsoTdsConf(activeBsoConf);
+          }
+        } catch (e) {
+          console.warn('Could not re-fetch BSO TDS config:', e);
+        }
+      }
 
-const handleAutoGenerate = async () => {
-  if (!orderId) return alert('No order ID found in URL');
-  setLoading(true);
-  try {
-    // Step 1: Fetch order to get the BSO field
-    const orderRes = await fetch(`/api/billing/orders?orderId=${orderId}`);
-    const orderResult = await orderRes.json();
-    const bso = orderResult.success && orderResult.data.length > 0
-      ? orderResult.data[0].bso || ''
-      : '';
-
-    // Step 2: Generate billings
-    const res = await fetch('/api/billing/monthly', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orderId, mode: 'auto', autoInvoice: true }),
-    });
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Failed to generate billings');
-
-    // Step 3: Re-fetch fresh billings (POST response may be incomplete)
-    const fetchRes = await fetch(`/api/billing/monthly?orderId=${orderId}`);
-    const fetchResult = await fetchRes.json();
-    const freshBillings = fetchResult.success ? fetchResult.data : [];
-
-    // Step 4: Patch tdsConfirm using BSO from order
-    let tdsPatched = 0;
-    const patchPromises = freshBillings.map(async (billing) => {
-      if (billing.tdsConfirm && billing.tdsConfirm.length > 0) return;
-
-      const tdsEntry = buildAutoTdsConfirmEntry(billing, bso);
-      if (!tdsEntry) return;
-
-      const putRes = await fetch('/api/billing/monthly', {
-        method: 'PUT',
+      // Step 3: Generate billings via API
+      const res = await fetch('/api/billing/monthly', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...billing, tdsConfirm: [tdsEntry] }),
+        body: JSON.stringify({ orderId, mode: 'auto', autoInvoice: true }),
       });
-      const putResult = await putRes.json();
-      if (putResult.success) tdsPatched++;
-      else console.warn(`Failed to patch TDS for ${billing._id}:`, putResult.error);
-    });
+      const result = await res.json();
+      if (!result.success) throw new Error(result.error || 'Failed to generate billings');
 
-    await Promise.all(patchPromises);
+      // Step 4: Re-fetch fresh billings (POST response may lack full fields)
+      const fetchRes = await fetch(`/api/billing/monthly?orderId=${orderId}`);
+      const fetchResult = await fetchRes.json();
+      const freshBillings = fetchResult.success ? fetchResult.data : [];
 
-    alert(
-      `✅ Successfully generated ${freshBillings.length} billings!` +
-      (tdsPatched > 0
-        ? `\n📋 Auto-added TDS Confirm to ${tdsPatched} billing(s) (BSO: ${bso}).`
-        : bso
-          ? `\n⚠️ BSO "${bso}" not found in bsoTdsConf — no TDS added.`
-          : `\n⚠️ No BSO set on this order — no TDS added.`)
-    );
-    await fetchBillings();
-  } catch (e) {
-    alert(`❌ Failed to generate billings:\n${e.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+      // Step 5: Patch tdsConfirm using live BSO config
+      let tdsPatched = 0;
+      const patchPromises = freshBillings.map(async (billing) => {
+        // Skip if already has tdsConfirm entries
+        if (billing.tdsConfirm && billing.tdsConfirm.length > 0) return;
+
+        const tdsEntry = buildAutoTdsConfirmEntry(billing, bso, activeBsoConf);
+        if (!tdsEntry) return;
+
+        const putRes = await fetch('/api/billing/monthly', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...billing, tdsConfirm: [tdsEntry] }),
+        });
+        const putResult = await putRes.json();
+        if (putResult.success) tdsPatched++;
+        else console.warn(`Failed to patch TDS for ${billing._id}:`, putResult.error);
+      });
+
+      await Promise.all(patchPromises);
+
+      alert(
+        `✅ Successfully generated ${freshBillings.length} billings!` +
+        (tdsPatched > 0
+          ? `\n📋 Auto-added TDS Confirm to ${tdsPatched} billing(s) (BSO: ${bso}).`
+          : bso
+            ? `\n⚠️ BSO "${bso}" not found in active config — no TDS added.`
+            : `\n⚠️ No BSO set on this order — no TDS added.`)
+      );
+      await fetchBillings();
+    } catch (e) {
+      alert(`❌ Failed to generate billings:\n${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDateToDisplayLocal = (storedDate) => {
     if (!storedDate) return '';
@@ -999,6 +1043,21 @@ const handleAutoGenerate = async () => {
             <div className="space-y-1"><p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Product</p><span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold">{orderDetails.product}</span></div>
             <div className="space-y-1"><p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">PCD Date</p><p className="text-base font-bold text-gray-900 flex items-center gap-1"><CalendarIcon className="w-4 h-4 text-blue-600" />{formatDateToDisplayLocal(orderDetails.pcdDate)}</p></div>
             <div className="space-y-1"><p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Capacity</p><p className="text-base font-bold text-gray-900">{orderDetails.capacity} Mbps</p></div>
+            {/* BSO badge — shows the live TDS rate if matched */}
+            <div className="space-y-1">
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">BSO</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold">
+                  {orderDetails.bso || '—'}
+                </span>
+                {orderDetails.bso && bsoTdsConf.length > 0 && (() => {
+                  const match = bsoTdsConf.find(b => orderDetails.bso.toLowerCase().includes(b.name.toLowerCase()));
+                  return match
+                    ? <span className="inline-block px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold">TDS {match.tds}%</span>
+                    : <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 rounded-lg text-xs font-semibold">No TDS config</span>;
+                })()}
+              </div>
+            </div>
             {orderDetails.splitFactor?.isApplicable && (
               <div className="space-y-1"><p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Split Factor</p>
                 <div className="flex items-center gap-2">
