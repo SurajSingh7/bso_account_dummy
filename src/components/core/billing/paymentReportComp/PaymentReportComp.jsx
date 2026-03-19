@@ -64,6 +64,25 @@ const fmtCreatedAt = (iso) => {
 }
 const getPaymentMethodMeta = (method) => PAYMENT_METHOD_META[method] || PAYMENT_METHOD_META.cash
 
+// ─── Parse paymentDate string to comparable ms value ─────────
+// Handles: "DD-MM-YYYY", "DD/MM/YYYY", "YYYY-MM-DD", ISO
+const parseDateToMs = (dateStr) => {
+  if (!dateStr) return null
+  // Try DD-MM-YYYY (e.g. "19-03-2026")
+  const ddmmyyyyDash = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/)
+  if (ddmmyyyyDash) {
+    return new Date(`${ddmmyyyyDash[3]}-${ddmmyyyyDash[2]}-${ddmmyyyyDash[1]}`).getTime()
+  }
+  // Try DD/MM/YYYY (e.g. "19/03/2026")
+  const ddmmyyyySlash = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (ddmmyyyySlash) {
+    return new Date(`${ddmmyyyySlash[3]}-${ddmmyyyySlash[2]}-${ddmmyyyySlash[1]}`).getTime()
+  }
+  // Try YYYY-MM-DD or ISO
+  const ts = new Date(dateStr).getTime()
+  return isNaN(ts) ? null : ts
+}
+
 // ─── Compute monthly total for an entry ──────────────────────
 const getMonthlyTotal = (entry) => {
   const adjs = entry.monthlyAdjustments || []
@@ -96,7 +115,6 @@ const StatusPill = ({ adj }) => {
 
 // ─── PDF Entry Card ────────────────────────────────────────────
 const PdfEntryCard = ({ entry, index }) => {
-  // ✅ Only show Fully Paid or Partially Paid — skip Not Paid rows
   const adjs = (entry.monthlyAdjustments || []).filter(adj =>
     adj.amountStatus === 'Fully Paid' || adj.amountStatus === 'Partially Paid'
   )
@@ -561,17 +579,19 @@ const StatCard = ({ icon: Icon, label, value, sub, iconCls, borderCls }) => (
 )
 
 // ─── Main Page ────────────────────────────────────────────────
-export default function PaymentReportComp() {
-  const [records, setRecords]       = useState([])
-  const [groups, setGroups]         = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [groupQuery, setGroupQuery] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
-  const [textSearch, setTextSearch] = useState('')
-  const [viewRecord, setViewRecord] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
-  const [toast, setToast]           = useState(null)
-  const groupInputRef               = useRef(null)
+export default function DistributedPaymentsPage() {
+  const [records, setRecords]         = useState([])
+  const [groups, setGroups]           = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [groupQuery, setGroupQuery]   = useState('')
+  const [typeFilter, setTypeFilter]   = useState('')
+  const [textSearch, setTextSearch]   = useState('')
+  const [dateFrom, setDateFrom]       = useState('')
+  const [dateTo, setDateTo]           = useState('')
+  const [viewRecord, setViewRecord]   = useState(null)
+  const [deletingId, setDeletingId]   = useState(null)
+  const [toast, setToast]             = useState(null)
+  const groupInputRef                 = useRef(null)
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type })
@@ -603,21 +623,44 @@ export default function PaymentReportComp() {
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
   const filteredRecords = useMemo(() => {
-    if (!textSearch.trim()) return records
-    const q = textSearch.toLowerCase().trim()
-    return records.filter(r =>
-      r.companyGroup?.toLowerCase().includes(q) ||
-      r.billingMonth?.toLowerCase().includes(q) ||
-      r.paymentDate?.includes(q) ||
-      r.notes?.toLowerCase().includes(q) ||
-      r.paymentMethod?.toLowerCase().includes(q) ||
-      r.entries?.some(e =>
-        e.orderId?.toLowerCase().includes(q) ||
-        e.companyName?.toLowerCase().includes(q) ||
-        e.state?.toLowerCase().includes(q)
+    let result = records
+
+    // Text search
+    if (textSearch.trim()) {
+      const q = textSearch.toLowerCase().trim()
+      result = result.filter(r =>
+        r.companyGroup?.toLowerCase().includes(q) ||
+        r.billingMonth?.toLowerCase().includes(q) ||
+        r.paymentDate?.includes(q) ||
+        r.notes?.toLowerCase().includes(q) ||
+        r.paymentMethod?.toLowerCase().includes(q) ||
+        r.entries?.some(e =>
+          e.orderId?.toLowerCase().includes(q) ||
+          e.companyName?.toLowerCase().includes(q) ||
+          e.state?.toLowerCase().includes(q)
+        )
       )
-    )
-  }, [records, textSearch])
+    }
+
+    // Payment date range filter
+    if (dateFrom) {
+      const fromMs = new Date(dateFrom).getTime()
+      result = result.filter(r => {
+        const ms = parseDateToMs(r.paymentDate)
+        return ms !== null && ms >= fromMs
+      })
+    }
+    if (dateTo) {
+      // Include the full "to" day by setting time to end of day
+      const toMs = new Date(dateTo).getTime() + 86399999
+      result = result.filter(r => {
+        const ms = parseDateToMs(r.paymentDate)
+        return ms !== null && ms <= toMs
+      })
+    }
+
+    return result
+  }, [records, textSearch, dateFrom, dateTo])
 
   const stats = useMemo(() => {
     const totalAmt     = filteredRecords.reduce((s, r) => s + (Number(r.totalAmount) || 0), 0)
@@ -630,7 +673,7 @@ export default function PaymentReportComp() {
     return { total: filteredRecords.length, totalAmt, totalEntries, byType }
   }, [filteredRecords])
 
-  const hasFilters = groupQuery || typeFilter || textSearch
+  const hasFilters = groupQuery || typeFilter || textSearch || dateFrom || dateTo
 
   const handleDelete = async (id) => {
     try {
@@ -712,7 +755,8 @@ export default function PaymentReportComp() {
               <span className="text-[10px] font-black text-violet-600 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-full uppercase">Filters active</span>
             )}
           </div>
-          <div className="p-5">
+          <div className="p-5 space-y-4">
+            {/* Row 1: Company Group, Payment Type, Quick Search */}
             <div className="flex flex-wrap gap-4 items-end">
               <div className="flex-1 min-w-[220px]">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Company Group</label>
@@ -755,9 +799,63 @@ export default function PaymentReportComp() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Row 2: Payment Date Range + Clear All */}
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="min-w-[200px]">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment Date — From</label>
+                <div className="relative">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={e => setDateFrom(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white font-medium text-slate-700"
+                  />
+                  {dateFrom && (
+                    <button onClick={() => setDateFrom('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 rounded-md">
+                      <X className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="min-w-[200px]">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment Date — To</label>
+                <div className="relative">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    min={dateFrom || undefined}
+                    className="w-full pl-9 pr-8 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white font-medium text-slate-700"
+                  />
+                  {dateTo && (
+                    <button onClick={() => setDateTo('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 rounded-md">
+                      <X className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {/* Active date range badge */}
+              {(dateFrom || dateTo) && (
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 border border-blue-200 rounded-xl self-end">
+                  <Calendar className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                  <span className="text-xs font-bold text-blue-700">
+                    {dateFrom && dateTo
+                      ? `${dateFrom} → ${dateTo}`
+                      : dateFrom
+                      ? `From ${dateFrom}`
+                      : `Until ${dateTo}`}
+                  </span>
+                </div>
+              )}
               {hasFilters && (
-                <button onClick={() => { setGroupQuery(''); setTypeFilter(''); setTextSearch('') }}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-50 text-rose-600 text-sm rounded-xl border border-rose-200 hover:bg-rose-100 font-bold transition-all self-end">
+                <button
+                  onClick={() => { setGroupQuery(''); setTypeFilter(''); setTextSearch(''); setDateFrom(''); setDateTo('') }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-50 text-rose-600 text-sm rounded-xl border border-rose-200 hover:bg-rose-100 font-bold transition-all self-end"
+                >
                   <X className="w-3.5 h-3.5" />Clear All
                 </button>
               )}
@@ -797,7 +895,7 @@ export default function PaymentReportComp() {
                 {hasFilters ? 'Try clearing some filters, or' : ''} Submit payments from the Bulk Update page to create distribution records.
               </p>
               {hasFilters && (
-                <button onClick={() => { setGroupQuery(''); setTypeFilter(''); setTextSearch('') }}
+                <button onClick={() => { setGroupQuery(''); setTypeFilter(''); setTextSearch(''); setDateFrom(''); setDateTo('') }}
                   className="mt-3 text-xs font-bold text-violet-600 hover:text-violet-800 underline">
                   Clear all filters
                 </button>
